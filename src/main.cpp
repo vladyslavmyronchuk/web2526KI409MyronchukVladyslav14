@@ -31,6 +31,20 @@ void setup() {
     });
 
     server.begin();
+    // Використовуємо вбудований світлодіод (GPIO 2)
+    pinMode(2, OUTPUT);
+
+    // Створення REST-ендпоінта для перемикання (Пункт 2 методички)
+    server.on("/toggle", HTTP_GET, [](AsyncWebServerRequest *request){
+        int state = digitalRead(2);
+        digitalWrite(2, !state); // Інвертуємо стан
+        
+        // Формуємо JSON відповідь
+        String status = (!state) ? "ON" : "OFF";
+        String jsonResponse = "{\"status\":\"" + status + "\", \"gpio\":2}";
+        
+        request->send(200, "application/json", jsonResponse);
+    });
 }
 
 void loop() {
