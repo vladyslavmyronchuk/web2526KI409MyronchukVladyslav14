@@ -1,39 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Dashboard</title>
+    <title>ESP32 Dashboard - Stage 3</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: Arial; text-align: center; background-color: #1a1a1a; color: white; }
-        .card { background: #333; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 50px; }
-        .btn { background-color: #008CBA; border: none; color: white; padding: 15px 32px; font-size: 16px; border-radius: 5px; cursor: pointer; }
-        .btn:hover { background-color: #0077a3; }
-        #status-text { font-weight: bold; color: #00ff00; }
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
+        .container { width: 80%; margin: 20px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .btn { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 5px; margin: 10px; }
+        .btn:active { background: #2980b9; }
+        #led-status { font-weight: bold; color: #e74c3c; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Керування LED</h1>
-        <p>Статус світлодіода: <span id="status-text">OFF</span></p>
-        <button class="btn" onclick="toggleLED()">ПЕРЕМКНУТИ</button>
+    <div class="container">
+        <h1>Керування LED (Stage 2)</h1>
+        <button class="btn" onclick="toggleLED()">ПЕРЕМКНУТИ LED</button>
+        <p>Статус: <span id="led-status">OFF</span></p>
+    </div>
+
+    <div class="container">
+        <h1>Графік сенсора (Stage 3 - WebSockets)</h1>
+        <canvas id="myChart"></canvas>
     </div>
 
     <script>
+        // ЛОГІКА LED (FETCH API)
         function toggleLED() {
-            // Асинхронний запит до контролера (Fetch API)
             fetch('/toggle')
-                .then(response => response.json()) // Очікуємо JSON
+                .then(response => response.json())
                 .then(data => {
-                    console.log('Дані отримано:', data);
-                    document.getElementById('status-text').innerText = data.status;
-                    
-                    // Зміна кольору тексту залежно від стану
-                    document.getElementById('status-text').style.color = 
-                        (data.status === "ON") ? "#00ff00" : "#ff4444";
-                })
-                .catch(err => console.error('Помилка запиту:', err));
+                    document.getElementById('led-status').innerText = data.status;
+                    document.getElementById('led-status').style.color = (data.status === "ON") ? "#2ecc71" : "#e74c3c";
+                });
         }
+
+        // ЛОГІКА ГРАФІКА (WEBSOCKETS)
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Значення з GPIO 34',
+                    data: [],
+                    borderColor: '#2ecc71',
+                    tension: 0.4,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true } },
+                animation: false
+            }
+        });
+
+        var gateway = `ws://${window.location.hostname}/ws`;
+        var websocket = new WebSocket(gateway);
+
+        websocket.onmessage = function(event) {
+            var now = new Date().toLocaleTimeString();
+            var val = event.data;
+
+            chart.data.labels.push(now);
+            chart.data.datasets[0].data.push(val);
+
+            if (chart.data.labels.length > 30) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            chart.update();
+        };
+
+        websocket.onopen = () => console.log("WS Connected");
+        websocket.onclose = () => console.log("WS Disconnected");
     </script>
 </body>
 </html>
