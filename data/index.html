@@ -1,8 +1,39 @@
 <!DOCTYPE html>
 <html>
-<head><title>ESP32 Server</title></head>
+<head>
+    <title>ESP32 Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; text-align: center; background-color: #1a1a1a; color: white; }
+        .card { background: #333; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 50px; }
+        .btn { background-color: #008CBA; border: none; color: white; padding: 15px 32px; font-size: 16px; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background-color: #0077a3; }
+        #status-text { font-weight: bold; color: #00ff00; }
+    </style>
+</head>
 <body>
-    <h1>Helllo its  LittleFS!</h1>
-    <p>Its is static page ESP32.</p>
+    <div class="card">
+        <h1>Керування LED</h1>
+        <p>Статус світлодіода: <span id="status-text">OFF</span></p>
+        <button class="btn" onclick="toggleLED()">ПЕРЕМКНУТИ</button>
+    </div>
+
+    <script>
+        function toggleLED() {
+            // Асинхронний запит до контролера (Fetch API)
+            fetch('/toggle')
+                .then(response => response.json()) // Очікуємо JSON
+                .then(data => {
+                    console.log('Дані отримано:', data);
+                    document.getElementById('status-text').innerText = data.status;
+                    
+                    // Зміна кольору тексту залежно від стану
+                    document.getElementById('status-text').style.color = 
+                        (data.status === "ON") ? "#00ff00" : "#ff4444";
+                })
+                .catch(err => console.error('Помилка запиту:', err));
+        }
+    </script>
 </body>
 </html>
