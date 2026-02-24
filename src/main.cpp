@@ -6,6 +6,10 @@
 #include <DNSServer.h>
 #include <Preferences.h>
 
+// Дані для автентифікації (Етап 5)
+const char* www_username = "admin";
+const char* www_password = "miron2026"; // Твій пароль
+
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 DNSServer dnsServer;
@@ -23,7 +27,6 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 void setup() {
     Serial.begin(115200);
     
-    // 1. ПОВНЕ ОЧИЩЕННЯ ПЕРЕД СТАРТОМ
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
     delay(1000); 
@@ -31,16 +34,12 @@ void setup() {
     if(!LittleFS.begin(true)) return;
     pinMode(2, OUTPUT);
 
-    // 2. ЧИТАННЯ ПАРАМЕТРІВ З ПАМ'ЯТІ (NVS)
-    preferences.begin("wifi-gate", true); // true - режим тільки для читання
+    preferences.begin("wifi-gate", true);
     String ssid = preferences.getString("ssid", "iPhoneMiron"); 
     String pass = preferences.getString("pass", "miron2019");
     preferences.end();
 
     Serial.print("\n--- СТАРТ ПРИСТРОЮ ---");
-    Serial.print("\nСпроба підключення до: ");
-    Serial.println(ssid);
-
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), pass.c_str());
     
@@ -50,58 +49,55 @@ void setup() {
         Serial.print(".");
     }
 
-    // 3. ПЕРЕВІРКА СТАТУСУ ТА ЗАПУСК AP MODE ЯКЩО ТРЕБА
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("\n[OK] ПІДКЛЮЧЕНО ДО МЕРЕЖІ!");
-        Serial.println(WiFi.localIP());
+        Serial.println("\n[OK] ПІДКЛЮЧЕНО ДО МЕРЕЖІ: " + WiFi.localIP().toString());
     } else {
-        Serial.println("\n[!] WiFi не знайдено. Перехід в AP Mode...");
+        Serial.println("\n[!] Запуск Точки Доступу...");
         WiFi.disconnect();
         WiFi.mode(WIFI_AP);
         WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-        
-        if(WiFi.softAP("ESP32-Setup-Miron")) {
-            Serial.println("Мережа 'ESP32-Setup-Miron' активна!");
-            Serial.print("Адреса налаштування: ");
-            Serial.println(WiFi.softAPIP());
-        }
+        WiFi.softAP("ESP32-Setup-Miron");
         dnsServer.start(DNS_PORT, "*", apIP);
     }
 
-    // 4. НАЛАШТУВАННЯ СЕРВЕРА
     ws.onEvent(onEvent);
     server.addHandler(&ws);
 
+    // Впровадження Basic Auth (Етап 5)
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        if(!request->authenticate(www_username, www_password))
+            return request->requestAuthentication();
         request->send(LittleFS, "/index.html", "text/html");
     });
 
-    // ОБРОБКА ЗБЕРЕЖЕННЯ (ПРАВИЛЬНА)
     server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
+        if(!request->authenticate(www_username, www_password))
+            return request->requestAuthentication();
+            
         String new_ssid = request->arg("ssid");
         String new_pass = request->arg("pass");
         
-        // Відкриваємо сховище для запису (false)
         preferences.begin("wifi-gate", false);
         preferences.putString("ssid", new_ssid);
         preferences.putString("pass", new_pass);
-        preferences.end(); // ЗАКРИВАЄМО, щоб дані збереглися у флеш
+        preferences.end();
 
-        Serial.printf("Дані збережено: %s / %s\n", new_ssid.c_str(), new_pass.c_str());
-        request->send(200, "text/plain", "Saved! ESP32 will reboot and connect to " + new_ssid);
-        
+        request->send(200, "text/plain", "Saved! Rebooting...");
         delay(2000);
         ESP.restart(); 
     });
 
-    server.onNotFound([](AsyncWebServerRequest *request){
-        request->redirect("/");
-    });
-
     server.on("/toggle", HTTP_GET, [](AsyncWebServerRequest *request){
+        if(!request->authenticate(www_username, www_password))
+            return request->requestAuthentication();
+            
         digitalWrite(2, !digitalRead(2));
         String status = (digitalRead(2)) ? "ON" : "OFF";
         request->send(200, "application/json", "{\"status\":\"" + status + "\"}");
+    });
+
+    server.onNotFound([](AsyncWebServerRequest *request){
+        request->redirect("/");
     });
 
     server.begin();
