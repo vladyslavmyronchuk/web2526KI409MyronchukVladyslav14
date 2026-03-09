@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miron ESP32 Control</title>
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+            --bg: #0f172a;
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 320px;
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 2rem;
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .led-indicator {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 2rem;
+            background: #334155;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            transition: all 0.4s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .led-active {
+            background: var(--primary);
+            box-shadow: 0 0 30px var(--primary), inset 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-on {
+            background: linear-gradient(to bottom right, #22c55e, #16a34a);
+            color: white;
+        }
+
+        .btn-off {
+            background: linear-gradient(to bottom right, #ef4444, #dc2626);
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="status-badge" id="wifi-status">Connected: Xiaomi_D832</div>
+    <h1>ESP32 Control Hub</h1>
+    
+    <div id="led-viz" class="led-indicator"></div>
+
+    <div class="btn-group">
+        <button class="btn-on" onclick="sendCommand('on')">Ввімкнути</button>
+        <button class="btn-off" onclick="sendCommand('off')">Вимкнути</button>
+    </div>
+
+    <div class="footer">Developed by Miron • 2026</div>
+</div>
+
+<script>
+    // Функція для оновлення візуального стану
+    async function updateStatus() {
+        try {
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            const led = document.getElementById('led-viz');
+            
+            if (data.led_on) {
+                led.classList.add('led-active');
+            } else {
+                led.classList.remove('led-active');
+            }
+        } catch (e) {
+            console.error("Помилка отримання статусу");
+        }
+    }
+
+    // Функція відправки команди
+    async function sendCommand(cmd) {
+        try {
+            await fetch('/api/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({command: cmd})
+            });
+            updateStatus();
+        } catch (e) {
+            alert("Помилка зв'язку з ESP32");
+        }
+    }
+
+    // Опитування статусу кожні 2 секунди
+    setInterval(updateStatus, 2000);
+    updateStatus(); // Перший запуск
+</script>
+
+</body>
+</html>

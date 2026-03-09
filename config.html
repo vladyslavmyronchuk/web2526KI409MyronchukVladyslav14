@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Налаштування Wi-Fi</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 320px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        h2 { text-align: center; color: #00d2ff; margin-bottom: 25px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 15px; border-radius: 8px; border: none; background: linear-gradient(to right, #00d2ff, #3a7bd5); color: white; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        button:active { transform: scale(0.95); }
+        .info { font-size: 0.8rem; text-align: center; margin-top: 15px; opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Wi-Fi Setup</h2>
+        <form action="/save" method="POST">
+            <input type="text" name="ssid" placeholder="Назва Wi-Fi" required>
+            <input type="password" name="pass" placeholder="Пароль">
+            <button type="submit">Зберегти та підключити</button>
+        </form>
+        <div class="info">Пристрій перезавантажиться після збереження</div>
+    </div>
+</body>
+</html>
