@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>HMC5883L Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: #eee; text-align: center; padding: 20px; }
+        .container { width: 95%; max-width: 900px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 12px; }
+        #status { font-weight: bold; }
+        .connected { color: #4caf50; }
+        .disconnected { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Магнітометр (WebSockets + LittleFS)</h2>
+        <p>Статус: <span id="status" class="disconnected">Відключено</span></p>
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        const gateway = `ws://${window.location.hostname}:81`;
+        let socket;
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Вісь X', borderColor: 'red', data: [], tension: 0.2, pointRadius: 0 },
+                        { label: 'Вісь Y', borderColor: 'green', data: [], tension: 0.2, pointRadius: 0 },
+                        { label: 'Вісь Z', borderColor: 'blue', data: [], tension: 0.2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    animation: false,
+                    scales: {
+                        y: { min: -40, max: 40, grid: { color: '#333' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function initWebSocket() {
+            socket = new WebSocket(gateway);
+            
+            socket.onopen = () => {
+                const s = document.getElementById('status');
+                s.innerText = "Підключено";
+                s.className = "connected";
+            };
+
+            socket.onclose = () => {
+                const s = document.getElementById('status');
+                s.innerText = "Відключено";
+                s.className = "disconnected";
+                setTimeout(initWebSocket, 2000);
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const d = JSON.parse(event.data);
+                    const now = new Date().toLocaleTimeString().split(' ')[0];
+
+                    chart.data.labels.push(now);
+                    // Переконайся, що ключі d.x, d.y, d.z збігаються з doc["x"] тощо в C++
+                    chart.data.datasets[0].data.push(d.x);
+                    chart.data.datasets[1].data.push(d.y);
+                    chart.data.datasets[2].data.push(d.z);
+
+                    if (chart.data.labels.length > 50) {
+                        chart.data.labels.shift();
+                        chart.data.datasets.forEach(dataset => dataset.data.shift());
+                    }
+                    chart.update('none');
+                } catch (e) {
+                    console.error("Помилка парсингу JSON:", e);
+                }
+            };
+        }
+
+        window.onload = () => {
+            initChart();
+            initWebSocket();
+        };
+    </script>
+</body>
+</html>
